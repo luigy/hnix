@@ -25,27 +25,11 @@ let inherit (nixpkgs) pkgs;
     };
   };
 
-in haskellPackages.developPackage {
-  root = ./.;
-
-  source-overrides = {
-  };
-
-  modifier = drv: pkgs.haskell.lib.overrideCabal drv (attrs: {
-    testHaskellDepends = attrs.testHaskellDepends ++
-      [
-        pkgs.nix
-        haskellPackages.hpack
-        # haskellPackages.cabal-install
-      ];
-
-    enableLibraryProfiling    = doProfiling;
-    enableExecutableProfiling = doProfiling;
-
-    inherit doBenchmark;
-
-    configureFlags = if doTracing
-                     then [ "--flags=tracing" ]
-                     else [];
-  });
-}
+in with pkgs.haskell.lib;
+((haskellPackages
+  .extend (packageSourceOverrides { hnix = ./.; }))
+   .extend (self: super: { hnix = addBuildDepend super.hnix self.groom; }))
+    .shellFor {
+      packages = p: [ p.hnix ];
+      withHoogle = false;
+    }
